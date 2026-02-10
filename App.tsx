@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Cpu, 
   Bot,
@@ -14,7 +14,10 @@ import {
   X,
   Layers,
   Shield,
-  ArrowRight
+  ArrowRight,
+  ShieldCheck,
+  Lock,
+  ChevronRight
 } from 'lucide-react';
 import { DESIGN_SYSTEM, CONTENT as INITIAL_CONTENT } from './constants';
 import { Button } from './components/Button';
@@ -36,6 +39,9 @@ const IconMap: Record<string, any> = {
 
 const App: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [content, setContent] = useState(INITIAL_CONTENT);
 
@@ -44,11 +50,11 @@ const App: React.FC = () => {
     if (savedContent) {
       try {
         const parsed = JSON.parse(savedContent);
-        setContent({
-          ...INITIAL_CONTENT,
+        setContent(prev => ({
+          ...prev,
           ...parsed,
-          settings: { ...INITIAL_CONTENT.settings, ...parsed.settings }
-        });
+          settings: { ...prev.settings, ...parsed.settings }
+        }));
       } catch (e) {
         console.error("Erro ao carregar conteúdo", e);
       }
@@ -60,16 +66,20 @@ const App: React.FC = () => {
     localStorage.setItem('precision_30_content', JSON.stringify(newContent));
   };
 
-  const handleAdminAccess = () => {
-    const password = window.prompt("Acesso Restrito. Digite a credencial:");
-    if (password === '326598') {
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (authPassword === '326598') {
       setIsAdmin(true);
-    } else if (password !== null) {
-      alert("Credencial inválida.");
+      setShowAuthModal(false);
+      setAuthError(false);
+      setAuthPassword('');
+      window.scrollTo(0, 0);
+    } else {
+      setAuthError(true);
+      setTimeout(() => setAuthError(false), 2000);
     }
   };
 
-  const { spacing } = DESIGN_SYSTEM;
   const { 
     primaryColor, 
     highlightColor, 
@@ -82,7 +92,7 @@ const App: React.FC = () => {
     fontSizeBody 
   } = content.settings;
 
-  const dynamicStyles = (
+  const dynamicStyles = useMemo(() => (
     <style>
       {`
         :root {
@@ -116,22 +126,22 @@ const App: React.FC = () => {
         .bg-primary-dynamic { background-color: var(--primary-color); }
         .border-primary-dynamic { border-color: var(--primary-color); }
         .hero-highlight { color: var(--highlight-color); }
+        
+        .tech-mono { font-family: 'JetBrains Mono', monospace; }
       `}
     </style>
-  );
+  ), [primaryColor, highlightColor, fontSizeHero, fontSizeSubheadline, fontSizeSectionTitle, fontSizeBody]);
 
   const renderLogo = () => {
     if (logoIcon === 'custom' && logoImageUrl) {
       return (
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 flex-shrink-0 overflow-hidden rounded-xl">
+        <div className="flex items-center gap-3 shrink-0 cursor-pointer">
+          <div className="w-10 h-10 flex-shrink-0 overflow-hidden rounded-xl bg-slate-50 border border-slate-100 p-1">
             <img 
               src={logoImageUrl} 
               alt="Logo" 
               className="w-full h-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=IA';
-              }}
+              loading="eager"
             />
           </div>
           <span className="font-bold text-lg tracking-tight text-slate-900 hidden sm:inline-block">
@@ -143,7 +153,7 @@ const App: React.FC = () => {
 
     const LogoIconComponent = IconMap[logoIcon] || Cpu;
     return (
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 cursor-pointer">
         <div className="w-8 h-8 flex-shrink-0 bg-primary-dynamic flex items-center justify-center rounded-lg shadow-sm">
           <LogoIconComponent className="text-white" size={18} />
         </div>
@@ -178,10 +188,48 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-white selection:bg-blue-100 selection:text-blue-600 overflow-x-hidden w-full font-sans">
       {dynamicStyles}
       
+      {/* Auth Modal Customizado (Substituindo o Prompt) */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl border border-slate-100 relative overflow-hidden">
+            <button onClick={() => setShowAuthModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
+              <X size={20} />
+            </button>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 text-slate-900 border border-slate-100">
+                <Lock size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">Acesso Restrito</h3>
+              <p className="text-xs text-slate-400 font-medium mb-8 uppercase tracking-widest tech-mono">STABLE_BUILD_3.0</p>
+              
+              <form onSubmit={handleAuthSubmit} className="w-full space-y-4">
+                <input 
+                  type="password" 
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="Credencial de Segurança"
+                  autoFocus
+                  className={`w-full bg-slate-50 border ${authError ? 'border-red-500 ring-2 ring-red-500/10' : 'border-slate-100'} rounded-2xl px-6 py-4 text-center text-sm outline-none focus:ring-4 focus:ring-blue-600/5 transition-all`}
+                />
+                <button 
+                  type="submit"
+                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-[10px] tech-mono uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-[0.98]"
+                >
+                  Autenticar
+                </button>
+                {authError && <p className="text-[10px] font-bold text-red-500 uppercase tech-mono text-center">Credencial Inválida</p>}
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 h-20">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 h-20">
         <div className="max-w-7xl mx-auto h-full px-4 md:px-8 flex justify-between items-center">
-          {renderLogo()}
+          <div onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+            {renderLogo()}
+          </div>
           
           <div className="hidden lg:flex items-center gap-10">
             {content.nav.map((item: any) => (
@@ -192,33 +240,32 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="primary" className="hidden sm:block px-6 py-2.5 text-[9px] bg-primary-dynamic shadow-none">Agendar Demo</Button>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-slate-600">
+            <Button variant="primary" className="hidden sm:block px-6 py-2.5 text-[9px] bg-primary-dynamic shadow-none border-none">Agendar Demo</Button>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2 text-slate-600 focus:outline-none">
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-100 shadow-2xl p-6 flex flex-col gap-6 animate-in slide-in-from-bottom duration-300">
+          <div className="lg:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-100 shadow-2xl p-6 flex flex-col gap-6">
             {content.nav.map((item: any) => (
               <a key={item.label} href={item.href} onClick={(e) => handleScrollTo(e, item.href)} className="text-xs font-bold tech-mono text-slate-600 border-b border-slate-50 py-2">
                 {item.label}
               </a>
             ))}
-            <Button variant="primary" className="w-full bg-primary-dynamic">Agendar Demo</Button>
+            <Button variant="primary" className="w-full bg-primary-dynamic border-none">Agendar Demo</Button>
           </div>
         )}
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-40 pb-20 px-4 w-full min-h-screen flex items-center">
+      <section className="pt-40 pb-20 px-4 w-full min-h-screen flex items-center overflow-hidden">
         <div className="max-w-7xl mx-auto w-full">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="animate-in fade-in slide-in-from-left duration-700">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary-dynamic animate-pulse"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-primary-dynamic"></div>
                 <span className="text-[10px] tech-mono font-bold text-primary-dynamic tracking-[0.2em] uppercase">{content.hero.tag}</span>
               </div>
               <h1 className="text-slate-900 mb-8 dynamic-hero-text">
@@ -228,8 +275,8 @@ const App: React.FC = () => {
                 {content.hero.subheadline}
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 mb-12">
-                <Button variant="primary" className="bg-primary-dynamic w-full sm:w-auto px-10 py-5">{content.hero.ctaPrimary}</Button>
-                <Button variant="ghost" className="w-full sm:w-auto" onClick={(e) => handleScrollTo(e, '#planos')}>
+                <Button variant="primary" className="bg-primary-dynamic w-full sm:w-auto px-10 py-5 border-none">{content.hero.ctaPrimary}</Button>
+                <Button variant="ghost" className="w-full sm:w-auto text-slate-400 border-none" onClick={(e) => handleScrollTo(e, '#planos')}>
                   {content.hero.ctaSecondary}
                 </Button>
               </div>
@@ -237,7 +284,7 @@ const App: React.FC = () => {
                 <div className="flex -space-x-3">
                   {[1,2,3].map(i => (
                     <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-200 overflow-hidden shadow-sm">
-                      <img src={`https://i.pravatar.cc/100?u=${i + 15}`} alt="user" className="w-full h-full object-cover" />
+                      <img src={`https://i.pravatar.cc/100?u=${i + 20}`} alt="user" className="w-full h-full object-cover" />
                     </div>
                   ))}
                 </div>
@@ -248,7 +295,7 @@ const App: React.FC = () => {
             <div className="relative animate-in fade-in zoom-in duration-1000 hidden lg:block">
               <div className="aspect-square bg-slate-950 rounded-[60px] relative overflow-hidden flex items-center justify-center shadow-3xl border border-white/5">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.15),_transparent_70%)]"></div>
-                <div className="w-64 h-64 border border-blue-500/20 rounded-full animate-pulse flex items-center justify-center">
+                <div className="w-64 h-64 border border-blue-500/20 rounded-full flex items-center justify-center relative">
                    <div className="w-32 h-32 bg-blue-500/10 blur-3xl absolute rounded-full"></div>
                    <Bot className="text-blue-500 opacity-80" size={64} />
                 </div>
@@ -282,47 +329,7 @@ const App: React.FC = () => {
         </div>
       </section>
 
-      {/* Architecture (Dark) */}
-      <section className="py-24 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-[#020617] rounded-[48px] p-8 md:p-20 relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-1/2 h-full bg-primary-dynamic/5 blur-[120px] rounded-full"></div>
-             <div className="grid lg:grid-cols-2 gap-16 items-center relative z-10">
-                <div>
-                  <h2 className="text-white tracking-tight mb-12 dynamic-section-title font-bold">{content.architecture.title}</h2>
-                  <div className="space-y-12">
-                    {content.architecture.features.map((feature: any, i: number) => {
-                      const FeatIcon = IconMap[feature.icon] || Cpu;
-                      return (
-                        <div key={i} className="flex gap-6 group">
-                          <div className="w-12 h-12 flex-shrink-0 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-primary-dynamic group-hover:bg-primary-dynamic group-hover:text-white transition-all duration-300">
-                            <FeatIcon size={22} />
-                          </div>
-                          <div>
-                            <h4 className="text-white font-bold mb-3 text-lg">{feature.title}</h4>
-                            <p className="text-slate-400 text-sm leading-relaxed">{feature.description}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="hidden lg:flex justify-center">
-                    <div className="relative">
-                       <div className="w-80 h-80 rounded-full border border-primary-dynamic/20 flex items-center justify-center animate-spin-slow">
-                          <div className="w-4 h-4 bg-primary-dynamic rounded-full absolute -top-2"></div>
-                       </div>
-                       <div className="absolute inset-0 flex items-center justify-center">
-                          <Bot size={80} className="text-primary-dynamic opacity-20" />
-                       </div>
-                    </div>
-                </div>
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Segments */}
+      {/* Segments Section */}
       <section id="segmentos" className="py-24 px-4">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-center mb-16 tracking-tight text-slate-900 dynamic-section-title font-bold">{content.segments.title}</h2>
@@ -348,7 +355,7 @@ const App: React.FC = () => {
         </div>
       </section>
 
-      {/* Plans */}
+      {/* Plans Section */}
       <section id="planos" className="py-24 px-4 bg-slate-50/50">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-center mb-16 tracking-tight text-slate-900 dynamic-section-title font-bold">{content.plans.title}</h2>
@@ -371,7 +378,7 @@ const App: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                  <Button variant={isPremium ? 'primary' : 'secondary'} className={`w-full ${isPremium ? 'bg-primary-dynamic text-white' : ''} py-5 text-[10px]`}>{plan.buttonText}</Button>
+                  <Button variant={isPremium ? 'primary' : 'secondary'} className={`w-full ${isPremium ? 'bg-primary-dynamic text-white' : ''} py-5 text-[10px] border-none`}>{plan.buttonText}</Button>
                 </div>
               );
             })}
@@ -381,15 +388,18 @@ const App: React.FC = () => {
 
       {/* Footer */}
       <footer className="py-20 px-4 border-t border-slate-100 bg-white">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto text-center md:text-left">
            <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-[9px] tech-mono text-slate-400 tracking-widest uppercase font-bold">
               <p>© 2024 {logoText}. TODOS OS DIREITOS RESERVADOS.</p>
+              
               <button 
-                onClick={handleAdminAccess}
-                className="flex items-center gap-2 text-primary-dynamic hover:opacity-80 transition-opacity focus:outline-none"
+                onClick={(e) => { e.preventDefault(); setShowAuthModal(true); }}
+                className="flex items-center gap-2 text-slate-300 hover:text-primary-dynamic transition-all focus:outline-none group p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
+                title="Painel de Controle"
+                type="button"
               >
-                <div className="w-1.5 h-1.5 bg-primary-dynamic rounded-full"></div>
-                STABLE_BUILD_3.0
+                <ShieldCheck size={16} className="text-slate-200 group-hover:text-primary-dynamic transition-colors" />
+                <span className="tracking-widest">STABLE_BUILD_3.0</span>
               </button>
            </div>
         </div>
