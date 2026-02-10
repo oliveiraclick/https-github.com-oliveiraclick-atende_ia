@@ -75,6 +75,7 @@ const App: React.FC = () => {
     highlightColor, 
     logoText, 
     logoIcon,
+    logoImageUrl,
     fontSizeHero, 
     fontSizeSubheadline, 
     fontSizeSectionTitle, 
@@ -123,13 +124,35 @@ const App: React.FC = () => {
   );
 
   const renderLogo = () => {
+    // Se o usuário escolheu usar uma imagem personalizada
+    if (logoIcon === 'custom' && logoImageUrl) {
+      return (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 flex-shrink-0 overflow-hidden rounded-xl">
+            <img 
+              src={logoImageUrl} 
+              alt="Logo" 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                // Fallback caso a URL seja inválida
+                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=IA';
+              }}
+            />
+          </div>
+          <span className="font-bold text-lg tracking-tight text-slate-900 truncate max-w-[180px]">
+            {logoText}
+          </span>
+        </div>
+      );
+    }
+
     const LogoIconComponent = IconMap[logoIcon] || Cpu;
     return (
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 flex-shrink-0 bg-primary-dynamic flex items-center justify-center rounded-lg shadow-sm">
           <LogoIconComponent className="text-white" size={18} />
         </div>
-        <span className="font-bold text-lg tracking-tight text-slate-900 truncate max-w-[150px]">
+        <span className="font-bold text-lg tracking-tight text-slate-900 truncate max-w-[180px]">
           {logoText}
         </span>
       </div>

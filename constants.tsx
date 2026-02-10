@@ -53,7 +53,8 @@ export const COLOR_PALETTES = [
 export const CONTENT = {
   settings: {
     logoText: "IA 3.0 Precision",
-    logoIcon: "cpu",
+    logoIcon: "custom",
+    logoImageUrl: "https://raw.githubusercontent.com/stackblitz/stackblitz-images/main/logos/ia-precision-icon.png", // Usando um placeholder representativo do ícone enviado
     primaryColor: "#2563EB",
     highlightColor: "#2563EB",
     fontSizeHero: "72",

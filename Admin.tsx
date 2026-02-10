@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Eye, 
   Save, 
@@ -28,7 +28,9 @@ import {
   Plus,
   Trash2,
   Shield,
-  CheckCircle2
+  CheckCircle2,
+  Image as ImageIcon,
+  Upload
 } from 'lucide-react';
 import { COLOR_PALETTES } from './constants';
 
@@ -49,13 +51,15 @@ const ICON_OPTIONS = [
   { id: 'zap', icon: Zap },
   { id: 'shield', icon: Shield },
   { id: 'layers', icon: Layers },
-  { id: 'check', icon: CheckCircle2 }
+  { id: 'check', icon: CheckCircle2 },
+  { id: 'custom', icon: ImageIcon }
 ];
 
 const AdminDashboard: React.FC<AdminProps> = ({ content, onSave, onExit }) => {
   const [activeTab, setActiveTab] = useState('appearance');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [localContent, setLocalContent] = useState(() => JSON.parse(JSON.stringify(content)));
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (section: string, field: string, value: any) => {
     setLocalContent((prev: any) => ({
@@ -65,6 +69,18 @@ const AdminDashboard: React.FC<AdminProps> = ({ content, onSave, onExit }) => {
         [field]: value
       }
     }));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleChange('settings', 'logoImageUrl', reader.result as string);
+        handleChange('settings', 'logoIcon', 'custom');
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const applyPalette = (palette: typeof COLOR_PALETTES[0]) => {
@@ -207,10 +223,65 @@ const AdminDashboard: React.FC<AdminProps> = ({ content, onSave, onExit }) => {
               <div className="space-y-6">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                   <InputGroup label="NOME DA LOGO" value={localContent.settings.logoText} onChange={(v: string) => handleChange('settings', 'logoText', v)} />
-                  <IconSelector label="ÍCONE DA LOGO" value={localContent.settings.logoIcon} onChange={(v: string) => handleChange('settings', 'logoIcon', v)} />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  <div className="space-y-4 pt-4 border-t border-slate-50">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">ÍCONE / LOGO</label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {ICON_OPTIONS.map(opt => (
+                        <button key={opt.id} onClick={() => handleChange('settings', 'logoIcon', opt.id)} className={`p-2.5 rounded-xl border flex items-center justify-center transition-all ${localContent.settings.logoIcon === opt.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                          <opt.icon size={18} />
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="pt-4 space-y-4">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                          <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-slate-900 text-white rounded-xl font-bold text-[10px] uppercase hover:bg-slate-800 transition-all"
+                          >
+                            <Upload size={14} /> Subir Arquivo de Logo
+                          </button>
+                          <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileUpload} 
+                            accept="image/*" 
+                            className="hidden" 
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <InputGroup 
+                            label="OU COLE A URL DA IMAGEM" 
+                            value={localContent.settings.logoImageUrl} 
+                            onChange={(v: string) => {
+                              handleChange('settings', 'logoImageUrl', v);
+                              handleChange('settings', 'logoIcon', 'custom');
+                            }} 
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+                      
+                      {localContent.settings.logoImageUrl && (
+                        <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 overflow-hidden p-1">
+                            <img src={localContent.settings.logoImageUrl} alt="Preview" className="w-full h-full object-contain" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-900 uppercase">Preview do Ícone</p>
+                            <button onClick={() => handleChange('settings', 'logoImageUrl', '')} className="text-[9px] text-red-500 font-bold uppercase hover:underline">Remover</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-50">
                     <ColorInput label="COR PRIMÁRIA" value={localContent.settings.primaryColor} onChange={(v: string) => handleChange('settings', 'primaryColor', v)} />
                   </div>
+                  
                   <div className="pt-4 border-t border-slate-100">
                     <label className="text-[9px] font-bold text-slate-400 mb-4 block">PALETAS CURADAS</label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -228,7 +299,6 @@ const AdminDashboard: React.FC<AdminProps> = ({ content, onSave, onExit }) => {
 
             {activeTab !== 'appearance' && (
               <div className="space-y-8">
-                {/* Campos de texto da seção */}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                   {Object.keys(localContent[activeTab] || {}).map(key => {
                     const val = localContent[activeTab][key];
@@ -239,7 +309,6 @@ const AdminDashboard: React.FC<AdminProps> = ({ content, onSave, onExit }) => {
                   })}
                 </div>
 
-                {/* Arrays de dados (Cards, Features, etc) */}
                 {Object.keys(localContent[activeTab] || {}).map(key => {
                   const arr = localContent[activeTab][key];
                   if (Array.isArray(arr)) {
@@ -296,7 +365,6 @@ const AdminDashboard: React.FC<AdminProps> = ({ content, onSave, onExit }) => {
               </div>
             )}
             
-            {/* Margem de segurança pro mobile */}
             <div className="h-20 lg:hidden"></div>
           </div>
         </main>
@@ -305,15 +373,13 @@ const AdminDashboard: React.FC<AdminProps> = ({ content, onSave, onExit }) => {
   );
 };
 
-// --- Helpers do Admin ---
-
-const InputGroup = ({ label, value, onChange, type = 'input' }: any) => (
+const InputGroup = ({ label, value, onChange, type = 'input', placeholder = '' }: any) => (
   <div className="space-y-1.5">
     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{label}</label>
     {type === 'input' ? (
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base md:text-sm focus:ring-2 focus:ring-blue-500/10 outline-none" style={{ fontSize: '16px' }} />
+      <input type="text" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base md:text-sm focus:ring-2 focus:ring-blue-500/10 outline-none" style={{ fontSize: '16px' }} />
     ) : (
-      <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base md:text-sm focus:ring-2 focus:ring-blue-500/10 outline-none resize-none" style={{ fontSize: '16px' }} />
+      <textarea rows={3} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base md:text-sm focus:ring-2 focus:ring-blue-500/10 outline-none resize-none" style={{ fontSize: '16px' }} />
     )}
   </div>
 );
